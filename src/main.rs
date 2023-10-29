@@ -1,4 +1,4 @@
-use cgmath::{MetricSpace, Point3, Vector3, VectorSpace, Zero};
+use cgmath::{InnerSpace, MetricSpace, Point3, Vector3, VectorSpace, Zero};
 use derive_more::{Add, From, Sub, Sum};
 use derive_new::new;
 use easy_cast::ConvFloat;
@@ -83,21 +83,13 @@ impl std::fmt::Display for Color {
             "{} {} {}",
             convert_channel(self.0.x),
             convert_channel(self.0.y),
-            convert_channel(self.0.z)
+            convert_channel(self.0.z),
         )
     }
 }
 
 type Point = Point3<f64>;
 type Vector = Vector3<f64>;
-trait VectorExt {
-    fn unit(&self) -> Self;
-}
-impl VectorExt for Vector {
-    fn unit(&self) -> Self {
-        self / self.distance(Vector::zero())
-    }
-}
 
 #[derive(new)]
 struct DirectionVectors {
@@ -113,6 +105,18 @@ struct Ray {
 impl Ray {
     fn at(&self, t: f64) -> Point {
         self.origin + t * self.direction
+    }
+}
+
+#[derive(new)]
+struct Parabola {
+    a: f64,
+    b: f64,
+    c: f64,
+}
+impl Parabola {
+    fn discriminant(&self) -> f64 {
+        self.b.powi(2) - 4. * self.a * self.c
     }
 }
 
@@ -155,9 +159,23 @@ fn main() {
         image_size.width, image_size.height
     );
 
-    fn ray_color(ray: &Vector) -> Color {
-        let unit = ray.unit();
-        Color::new(1., 1., 1.).lerp(Color::new(0.5, 0.7, 1.), 0.5 * (unit.y + 1.))
+    fn hit_sphere(center: &Point, radius: f64, ray: &Ray) -> bool {
+        Parabola::new(
+            ray.direction.magnitude2(),
+            2. * ray.direction.dot(ray.origin - center),
+            (ray.origin - center).magnitude2() - radius.powi(2),
+        )
+        .discriminant()
+            >= 0.
+    }
+
+    fn ray_color(ray: &Ray) -> Color {
+        if hit_sphere(&Point::new(0., 0., -1.), 0.5, ray) {
+            Color::new(1., 0., 0.)
+        } else {
+            let unit = ray.direction.normalize();
+            Color::new(1., 1., 1.).lerp(Color::new(0.5, 0.7, 1.), 0.5 * (unit.y + 1.))
+        }
     }
 
     // Render the scene
@@ -169,9 +187,9 @@ fn main() {
         let pixel_center = pixel_upper_left
             + f64::from(x) * pixel_delta_vectors.u
             + f64::from(y) * pixel_delta_vectors.v;
-        let ray_direction = pixel_center - CAMERA_CENTER;
+        let ray = Ray::new(CAMERA_CENTER, pixel_center - CAMERA_CENTER);
 
-        println!("{}", ray_color(&ray_direction));
+        println!("{}", ray_color(&ray));
     }
     bar.finish_and_clear();
 }
