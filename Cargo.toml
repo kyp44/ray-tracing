@@ -6,7 +6,9 @@ version = "0.1.0"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+cgmath = "0.18"
 derive-new = "0.5"
+derive_more = "0.99"
 easy-cast = "0.5"
 indicatif = "0.17"
 itertools = "0.11"
