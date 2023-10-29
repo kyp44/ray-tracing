@@ -1,10 +1,12 @@
-use cgmath::{InnerSpace, MetricSpace, Point3, Vector3, VectorSpace, Zero};
-use derive_more::{Add, From, Sub, Sum};
+#![feature(cmp_minmax)]
+
+use cgmath::{InnerSpace, Point3, Vector3, VectorSpace};
 use derive_new::new;
 use easy_cast::ConvFloat;
 use indicatif::ProgressBar;
 use itertools::iproduct;
 use num::{rational::Ratio, ToPrimitive};
+use roots::find_roots_quadratic;
 
 const IMAGE_WIDTH: u32 = 400;
 const VIEWPORT_HEIGHT: f64 = 2.0;
@@ -31,48 +33,10 @@ where
 }
 
 type Channel = f64;
+type Color = Vector3<Channel>;
 
-#[derive(Clone, Copy, Add, Sub, Sum, From)]
-struct Color(Vector);
-impl Color {
-    fn new(red: f64, green: f64, blue: f64) -> Self {
-        Self(Vector::new(red, green, blue))
-    }
-}
-impl std::ops::Mul<Channel> for Color {
-    type Output = Self;
-
-    fn mul(self, rhs: Channel) -> Self::Output {
-        Self::from(rhs * self.0)
-    }
-}
-impl std::ops::Div<Channel> for Color {
-    type Output = Self;
-
-    fn div(self, rhs: Channel) -> Self::Output {
-        Self::from(self.0 / rhs)
-    }
-}
-impl std::ops::Rem<Channel> for Color {
-    type Output = Self;
-
-    fn rem(self, rhs: Channel) -> Self::Output {
-        Self::from(self.0 % rhs)
-    }
-}
-impl Zero for Color {
-    fn zero() -> Self {
-        Self::from(Vector::zero())
-    }
-
-    fn is_zero(&self) -> bool {
-        self.0.x.is_zero() && self.0.y.is_zero() && self.0.z.is_zero()
-    }
-}
-impl VectorSpace for Color {
-    type Scalar = f64;
-}
-impl std::fmt::Display for Color {
+struct ColorDisplay(Color);
+impl std::fmt::Display for ColorDisplay {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         fn convert_channel(v: Channel) -> u8 {
             u8::conv_nearest(Channel::from(MAX_COLOR) * v)
@@ -108,6 +72,13 @@ impl Ray {
     }
 }
 
+enum ParabolaRoots {
+    None,
+    One(f64),
+    // In order of absolute value
+    Two(f64, f64),
+}
+
 #[derive(new)]
 struct Parabola {
     a: f64,
@@ -115,8 +86,46 @@ struct Parabola {
     c: f64,
 }
 impl Parabola {
-    fn discriminant(&self) -> f64 {
-        self.b.powi(2) - 4. * self.a * self.c
+    fn roots(&self) -> ParabolaRoots {
+        use roots::Roots;
+
+        match find_roots_quadratic(self.a, self.b, self.c) {
+            Roots::One(r) => ParabolaRoots::One(r[0]),
+            Roots::Two(r) => {
+                let roots = std::cmp::minmax_by(r[0], r[1], |x, y| x.partial_cmp(y).unwrap());
+
+                ParabolaRoots::Two(roots[0], roots[1])
+            }
+            _ => ParabolaRoots::None,
+        }
+    }
+}
+
+#[derive(new)]
+struct Sphere {
+    center: Point,
+    radius: f64,
+}
+impl Sphere {
+    fn hit_color(&self, ray: &Ray) -> Option<Color> {
+        let oc = ray.origin - self.center;
+
+        match Parabola::new(
+            ray.direction.magnitude2(),
+            2. * oc.dot(ray.direction),
+            oc.magnitude2() - self.radius.powi(2),
+        )
+        .roots()
+        {
+            ParabolaRoots::None => None,
+            ParabolaRoots::One(r) => Some(r),
+            ParabolaRoots::Two(r, _) => Some(r),
+        }
+        .map(|t| {
+            let norm = (ray.at(t) - self.center).normalize();
+
+            (Color::from(norm) + Color::new(1., 1., 1.)) * 0.5
+        })
     }
 }
 
@@ -159,22 +168,13 @@ fn main() {
         image_size.width, image_size.height
     );
 
-    fn hit_sphere(center: &Point, radius: f64, ray: &Ray) -> bool {
-        Parabola::new(
-            ray.direction.magnitude2(),
-            2. * ray.direction.dot(ray.origin - center),
-            (ray.origin - center).magnitude2() - radius.powi(2),
-        )
-        .discriminant()
-            >= 0.
-    }
-
     fn ray_color(ray: &Ray) -> Color {
-        if hit_sphere(&Point::new(0., 0., -1.), 0.5, ray) {
-            Color::new(1., 0., 0.)
-        } else {
-            let unit = ray.direction.normalize();
-            Color::new(1., 1., 1.).lerp(Color::new(0.5, 0.7, 1.), 0.5 * (unit.y + 1.))
+        match Sphere::new(Point::new(0., 0., -1.), 0.5).hit_color(ray) {
+            Some(c) => c,
+            None => {
+                let unit = ray.direction.normalize();
+                Color::new(1., 1., 1.).lerp(Color::new(0.5, 0.7, 1.), 0.5 * (unit.y + 1.))
+            }
         }
     }
 
@@ -189,7 +189,7 @@ fn main() {
             + f64::from(y) * pixel_delta_vectors.v;
         let ray = Ray::new(CAMERA_CENTER, pixel_center - CAMERA_CENTER);
 
-        println!("{}", ray_color(&ray));
+        println!("{}", ColorDisplay(ray_color(&ray)));
     }
     bar.finish_and_clear();
 }
