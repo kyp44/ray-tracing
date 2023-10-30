@@ -1,22 +1,23 @@
 #![feature(cmp_minmax)]
 
 use cgmath::{InnerSpace, Vector3, VectorSpace};
+use clap::Parser;
 use derive_new::new;
 use easy_cast::ConvFloat;
 use indicatif::ProgressBar;
 use itertools::iproduct;
 use math::Point;
 use num::{rational::Ratio, ToPrimitive};
+use std::ops::RangeInclusive;
 
 use crate::{
-    hittable::Sphere,
+    hittable::{Hittable, HittableList, Sphere},
     math::{DirectionVectors, Ray, Vector},
 };
 
 mod hittable;
 mod math;
 
-const IMAGE_WIDTH: u32 = 400;
 const VIEWPORT_HEIGHT: f64 = 2.0;
 const FOCAL_LENGTH: f64 = 1.0;
 const CAMERA_CENTER: Point = Point::new(0., 0., 0.);
@@ -60,12 +61,25 @@ impl std::fmt::Display for ColorDisplay {
     }
 }
 
+/// A basic ray tracer, following the 'Ray Tracing in One Weekend' series of books.
+/// Prints PPM image text.
+#[derive(Parser, Debug)]
+#[command(author, about)]
+struct Args {
+    /// Render image height
+    #[arg(short, long, default_value_t = 400)]
+    image_width: u32,
+}
+
 fn main() {
+    // Parse arguments
+    let args = Args::parse();
+
     // Calculate the image size
     let aspect_ratio = Ratio::new(16u32, 9);
     let image_size = Size::new(
-        IMAGE_WIDTH,
-        (Ratio::from(IMAGE_WIDTH) / aspect_ratio).to_integer(),
+        args.image_width,
+        (Ratio::from(args.image_width) / aspect_ratio).to_integer(),
     );
 
     // Calculate the viewport size based on the image size
@@ -99,9 +113,14 @@ fn main() {
         image_size.width, image_size.height
     );
 
-    fn ray_color(ray: &Ray) -> Color {
-        match Sphere::new(Point::new(0., 0., -1.), 0.5).hit_color(ray) {
-            Some(c) => c,
+    let world = HittableList::new(Box::new([
+        Box::new(Sphere::new(Point::new(0., 0., -1.), 0.5)),
+        Box::new(Sphere::new(Point::new(0., -100.5, -1.), 100.)),
+    ]));
+
+    fn ray_color(ray: &Ray, world: &dyn Hittable) -> Color {
+        match world.hit(ray, &RangeInclusive::new(0., f64::INFINITY)) {
+            Some(hr) => (Color::from(hr.normal) + Color::new(1., 1., 1.)) * 0.5,
             None => {
                 let unit = ray.direction.normalize();
                 Color::new(1., 1., 1.).lerp(Color::new(0.5, 0.7, 1.), 0.5 * (unit.y + 1.))
@@ -120,7 +139,7 @@ fn main() {
             + f64::from(y) * pixel_delta_vectors.v;
         let ray = Ray::new(CAMERA_CENTER, pixel_center - CAMERA_CENTER);
 
-        println!("{}", ColorDisplay(ray_color(&ray)));
+        println!("{}", ColorDisplay(ray_color(&ray, &world)));
     }
     bar.finish_and_clear();
 }

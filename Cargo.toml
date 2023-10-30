@@ -7,6 +7,7 @@ version = "0.1.0"
 
 [dependencies]
 cgmath = "0.18"
+clap = {version = "4.4", features = ["derive"]}
 derive-new = "0.5"
 easy-cast = "0.5"
 indicatif = "0.17"
