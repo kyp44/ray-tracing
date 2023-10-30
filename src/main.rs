@@ -1,12 +1,20 @@
 #![feature(cmp_minmax)]
 
-use cgmath::{InnerSpace, Point3, Vector3, VectorSpace};
+use cgmath::{InnerSpace, Vector3, VectorSpace};
 use derive_new::new;
 use easy_cast::ConvFloat;
 use indicatif::ProgressBar;
 use itertools::iproduct;
+use math::Point;
 use num::{rational::Ratio, ToPrimitive};
-use roots::find_roots_quadratic;
+
+use crate::{
+    hittable::Sphere,
+    math::{DirectionVectors, Ray, Vector},
+};
+
+mod hittable;
+mod math;
 
 const IMAGE_WIDTH: u32 = 400;
 const VIEWPORT_HEIGHT: f64 = 2.0;
@@ -49,83 +57,6 @@ impl std::fmt::Display for ColorDisplay {
             convert_channel(self.0.y),
             convert_channel(self.0.z),
         )
-    }
-}
-
-type Point = Point3<f64>;
-type Vector = Vector3<f64>;
-
-#[derive(new)]
-struct DirectionVectors {
-    u: Vector,
-    v: Vector,
-}
-
-#[derive(new)]
-struct Ray {
-    origin: Point,
-    direction: Vector,
-}
-impl Ray {
-    fn at(&self, t: f64) -> Point {
-        self.origin + t * self.direction
-    }
-}
-
-enum ParabolaRoots {
-    None,
-    One(f64),
-    // In order of absolute value
-    Two(f64, f64),
-}
-
-#[derive(new)]
-struct Parabola {
-    a: f64,
-    b: f64,
-    c: f64,
-}
-impl Parabola {
-    fn roots(&self) -> ParabolaRoots {
-        use roots::Roots;
-
-        match find_roots_quadratic(self.a, self.b, self.c) {
-            Roots::One(r) => ParabolaRoots::One(r[0]),
-            Roots::Two(r) => {
-                let roots = std::cmp::minmax_by(r[0], r[1], |x, y| x.partial_cmp(y).unwrap());
-
-                ParabolaRoots::Two(roots[0], roots[1])
-            }
-            _ => ParabolaRoots::None,
-        }
-    }
-}
-
-#[derive(new)]
-struct Sphere {
-    center: Point,
-    radius: f64,
-}
-impl Sphere {
-    fn hit_color(&self, ray: &Ray) -> Option<Color> {
-        let oc = ray.origin - self.center;
-
-        match Parabola::new(
-            ray.direction.magnitude2(),
-            2. * oc.dot(ray.direction),
-            oc.magnitude2() - self.radius.powi(2),
-        )
-        .roots()
-        {
-            ParabolaRoots::None => None,
-            ParabolaRoots::One(r) => Some(r),
-            ParabolaRoots::Two(r, _) => Some(r),
-        }
-        .map(|t| {
-            let norm = (ray.at(t) - self.center).normalize();
-
-            (Color::from(norm) + Color::new(1., 1., 1.)) * 0.5
-        })
     }
 }
 
