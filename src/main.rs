@@ -66,7 +66,7 @@ impl std::fmt::Display for ColorDisplay {
 #[derive(Parser, Debug)]
 #[command(author, about)]
 struct Args {
-    /// Render image height
+    /// Render image width, with the height being determined by a 16:9 aspect ratio.
     #[arg(short, long, default_value_t = 400)]
     image_width: u32,
 }
