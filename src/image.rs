@@ -27,19 +27,18 @@ type Channel = f64;
 pub type Color = Vector3<Channel>;
 
 struct ColorDisplay(Color);
+impl ColorDisplay {
+    fn apply_gamma_correction(x: f64) -> f64 {
+        x.sqrt()
+    }
+}
 impl std::fmt::Display for ColorDisplay {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        fn convert_channel(v: Channel) -> u8 {
-            u8::conv_nearest(Channel::from(MAX_COLOR_CHANNEL) * v)
-        }
+        let color = self.0.map(|x| {
+            u8::conv_nearest(Channel::from(MAX_COLOR_CHANNEL) * Self::apply_gamma_correction(x))
+        });
 
-        write!(
-            f,
-            "{} {} {}",
-            convert_channel(self.0.x),
-            convert_channel(self.0.y),
-            convert_channel(self.0.z),
-        )
+        write!(f, "{} {} {}", color.x, color.y, color.z,)
     }
 }
 

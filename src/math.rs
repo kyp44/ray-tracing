@@ -1,4 +1,4 @@
-use cgmath::{InnerSpace, VectorSpace};
+use cgmath::{InnerSpace, Vector3, VectorSpace};
 use derive_new::new;
 use rand::{distributions::Uniform, prelude::Distribution, Rng};
 use roots::find_roots_quadratic;
@@ -41,6 +41,7 @@ pub trait VectorExt:
     }
 
     fn average(vectors: impl Iterator<Item = Self>) -> Self;
+    fn map<T>(&self, f: impl Fn(f64) -> T) -> Vector3<T>;
 }
 impl VectorExt for Vector {
     fn random<R: Rng>(rng: &mut R, range: Range<f64>) -> Self {
@@ -62,6 +63,10 @@ impl VectorExt for Vector {
             .expect("The vector iterator cannot be empty");
 
         sum / f64::from(n)
+    }
+
+    fn map<T>(&self, f: impl Fn(f64) -> T) -> Vector3<T> {
+        Vector3::new(f(self.x), f(self.y), f(self.z))
     }
 }
 

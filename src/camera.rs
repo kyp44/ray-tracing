@@ -15,7 +15,7 @@ use std::ops::RangeInclusive;
 const VIEWPORT_HEIGHT: f64 = 2.0;
 const FOCAL_LENGTH: f64 = 1.0;
 const CAMERA_CENTER: Point = Point::new(0., 0., 0.);
-const SAMPLES_PER_PIXEL: usize = 50;
+const SAMPLES_PER_PIXEL: usize = 100;
 /// The maximum number of ray bounces before just being black.
 const MAX_DEPTH: usize = 10;
 
