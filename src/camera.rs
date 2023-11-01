@@ -125,8 +125,10 @@ impl Camera {
             return Color::zero();
         }
 
-        match hittable.hit(ray, &RangeInclusive::new(0., f64::INFINITY)) {
+        // Did we hit something?
+        match hittable.hit(ray, &RangeInclusive::new(0.001, f64::INFINITY)) {
             Some(hr) => {
+                // For diffusion, send out a random reflected ray until we do not hit any surfaces
                 let direction = Vector::random_on_hemisphere(rng, hr.normal);
                 self.ray_color(rng, depth - 1, &Ray::new(hr.point, direction), hittable) * 0.5
             }
