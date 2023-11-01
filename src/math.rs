@@ -1,8 +1,69 @@
+use cgmath::{InnerSpace, VectorSpace};
 use derive_new::new;
+use rand::{distributions::Uniform, prelude::Distribution, Rng};
 use roots::find_roots_quadratic;
+use std::ops::Range;
 
 pub type Point = cgmath::Point3<f64>;
 pub type Vector = cgmath::Vector3<f64>;
+
+pub trait VectorExt:
+    Sized + VectorSpace<Scalar = f64> + InnerSpace + std::ops::Neg<Output = Self>
+{
+    fn random<R: Rng>(rng: &mut R, range: Range<f64>) -> Self;
+
+    fn random_unit_cube<R: Rng>(rng: &mut R) -> Self {
+        Self::random(rng, 0.0..1.)
+    }
+
+    // This is necessary so that the unit sphere has a uniform distribution
+    fn random_within_unit_sphere<R: Rng>(rng: &mut R) -> Self {
+        loop {
+            let v = Self::random(rng, -1.0..1.);
+            if v.magnitude2() < 1. {
+                break v;
+            }
+        }
+    }
+
+    fn random_unit<R: Rng>(rng: &mut R) -> Self {
+        Self::random_within_unit_sphere(rng).normalize()
+    }
+
+    fn random_on_hemisphere<R: Rng>(rng: &mut R, normal: Self) -> Self {
+        let unit = Self::random_unit(rng);
+
+        if unit.dot(normal) > 0.0 {
+            unit
+        } else {
+            -unit
+        }
+    }
+
+    fn average(vectors: impl Iterator<Item = Self>) -> Self;
+}
+impl VectorExt for Vector {
+    fn random<R: Rng>(rng: &mut R, range: Range<f64>) -> Self {
+        let between = Uniform::new(range.start, range.end);
+        Self::new(
+            between.sample(rng),
+            between.sample(rng),
+            between.sample(rng),
+        )
+    }
+
+    fn average(vectors: impl Iterator<Item = Self>) -> Self {
+        let mut n: u32 = 1;
+        let sum = vectors
+            .reduce(|a, b| {
+                n += 1;
+                a + b
+            })
+            .expect("The vector iterator cannot be empty");
+
+        sum / f64::from(n)
+    }
+}
 
 #[derive(new)]
 pub struct DirectionVectors {
