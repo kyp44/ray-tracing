@@ -1,6 +1,10 @@
 #![feature(cmp_minmax)]
 
-use crate::hittable::{HittableList, Sphere};
+use crate::{
+    hittable::{Hittable, HittableList, Sphere},
+    image::Color,
+    material::{Lambertian, Metal},
+};
 use camera::Camera;
 use clap::Parser;
 use math::Point;
@@ -9,7 +13,11 @@ use num::rational::Ratio;
 mod camera;
 mod hittable;
 mod image;
+mod material;
 mod math;
+
+/// This needs to be a particular type and not parametrized using the [`Rng`](rand::Rng) trait because we need trait objects.
+type UsedRng = rand::rngs::ThreadRng;
 
 /// A basic ray tracer, following the 'Ray Tracing in One Weekend' series of books.
 /// Prints PPM image text.
@@ -28,12 +36,38 @@ fn main() {
     // Setup camera
     let camera = Camera::new(args.image_width, Ratio::new(16, 9));
 
-    // Objects in the world
-    let world = HittableList::new(Box::new([
-        Box::new(Sphere::new(Point::new(0., 0., -1.), 0.5)),
-        Box::new(Sphere::new(Point::new(0., -100.5, -1.), 100.)),
-    ]));
+    // World objects
+    let world = [
+        Sphere::new(
+            Point::new(0., -100.5, -1.),
+            100.,
+            Box::new(Lambertian::new(Color::new(0.8, 0.8, 0.))),
+        ),
+        Sphere::new(
+            Point::new(0., 0., -1.),
+            0.5,
+            Box::new(Lambertian::new(Color::new(0.7, 0.3, 0.3))),
+        ),
+        Sphere::new(
+            Point::new(-1., 0., -1.),
+            0.5,
+            Box::new(Metal::new(Color::new(0.8, 0.8, 0.8))),
+        ),
+        Sphere::new(
+            Point::new(1., 0., -1.),
+            0.5,
+            Box::new(Metal::new(Color::new(0.8, 0.6, 0.2))),
+        ),
+    ];
 
     // Render image
-    println!("{}", camera.render(&world));
+    println!(
+        "{}",
+        camera.render(&HittableList::new(
+            &world
+                .iter()
+                .map(|h| h as &dyn Hittable)
+                .collect::<Box<[_]>>(),
+        ))
+    );
 }

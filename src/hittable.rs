@@ -1,18 +1,22 @@
-use crate::math::{Parabola, ParabolaRoots, Point, Ray, Vector};
+use crate::{
+    material::Material,
+    math::{Parabola, ParabolaRoots, Point, Ray, Vector},
+};
 use cgmath::InnerSpace;
 use derive_new::new;
 use std::ops::RangeInclusive;
 
-pub struct HitRecord {
+pub struct HitRecord<'a> {
     pub point: Point,
     // This normal always faces against the ray.
     pub normal: Vector,
     pub t: f64,
     // The front face was hit.
     pub front_face: bool,
+    pub material: &'a dyn Material,
 }
-impl HitRecord {
-    fn new(ray: &Ray, t: f64, outward_normal: Vector) -> Self {
+impl<'a> HitRecord<'a> {
+    fn new(material: &'a dyn Material, ray: &Ray, t: f64, outward_normal: Vector) -> Self {
         let front_face = ray.direction.dot(outward_normal) < 0.;
 
         HitRecord {
@@ -24,6 +28,7 @@ impl HitRecord {
             },
             t,
             front_face,
+            material,
         }
     }
 }
@@ -33,10 +38,10 @@ pub trait Hittable: Sync {
 }
 
 #[derive(new)]
-pub struct HittableList {
-    list: Box<[Box<dyn Hittable>]>,
+pub struct HittableList<'a> {
+    list: &'a [&'a dyn Hittable],
 }
-impl Hittable for HittableList {
+impl Hittable for HittableList<'_> {
     fn hit(&self, ray: &Ray, t_range: &RangeInclusive<f64>) -> Option<HitRecord> {
         self.list.iter().fold(None, |current, next| {
             let next = next.hit(
@@ -56,6 +61,7 @@ impl Hittable for HittableList {
 pub struct Sphere {
     center: Point,
     radius: f64,
+    material: Box<dyn Material + Sync>,
 }
 impl Hittable for Sphere {
     fn hit(&self, ray: &Ray, t_range: &RangeInclusive<f64>) -> Option<HitRecord> {
@@ -75,6 +81,7 @@ impl Hittable for Sphere {
         .and_then(|t| {
             if t_range.contains(&t) {
                 Some(HitRecord::new(
+                    self.material.as_ref(),
                     ray,
                     t,
                     (ray.at(t) - self.center) / self.radius,

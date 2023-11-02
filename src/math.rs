@@ -4,6 +4,8 @@ use rand::{distributions::Uniform, prelude::Distribution, Rng};
 use roots::find_roots_quadratic;
 use std::ops::Range;
 
+const NEAR_ZERO_THRESH: f64 = 1e-8;
+
 pub type Point = cgmath::Point3<f64>;
 pub type Vector = cgmath::Vector3<f64>;
 
@@ -40,8 +42,15 @@ pub trait VectorExt:
         }
     }
 
+    fn element_mul(&self, other: Self) -> Self;
+
+    fn reflect(&self, normal: Self) -> Self;
     fn average(vectors: impl Iterator<Item = Self>) -> Self;
+
     fn map<T>(&self, f: impl Fn(f64) -> T) -> Vector3<T>;
+    fn all(&self, f: impl Fn(f64) -> bool) -> bool;
+
+    fn near_zero(&self) -> bool;
 }
 impl VectorExt for Vector {
     fn random<R: Rng>(rng: &mut R, range: Range<f64>) -> Self {
@@ -51,6 +60,14 @@ impl VectorExt for Vector {
             between.sample(rng),
             between.sample(rng),
         )
+    }
+
+    fn element_mul(&self, other: Self) -> Self {
+        self.zip(other, |a, b| a * b)
+    }
+
+    fn reflect(&self, normal: Self) -> Self {
+        self - 2. * self.dot(normal) * normal
     }
 
     fn average(vectors: impl Iterator<Item = Self>) -> Self {
@@ -67,6 +84,14 @@ impl VectorExt for Vector {
 
     fn map<T>(&self, f: impl Fn(f64) -> T) -> Vector3<T> {
         Vector3::new(f(self.x), f(self.y), f(self.z))
+    }
+
+    fn all(&self, f: impl Fn(f64) -> bool) -> bool {
+        f(self.x) && f(self.y) & f(self.z)
+    }
+
+    fn near_zero(&self) -> bool {
+        self.all(|x| x.abs() < NEAR_ZERO_THRESH)
     }
 }
 

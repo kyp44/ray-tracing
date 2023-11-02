@@ -2,6 +2,7 @@ use crate::{
     hittable::Hittable,
     image::{Color, Image, Size},
     math::{DirectionVectors, Point, Ray, Vector, VectorExt},
+    UsedRng,
 };
 use cgmath::{InnerSpace, VectorSpace, Zero};
 use easy_cast::Cast;
@@ -97,7 +98,7 @@ impl Camera {
                             + (rng.gen::<f64>() - 0.5) * self.pixel_delta_vectors.v;
 
                         let ray = Ray::new(CAMERA_CENTER, pixel_sample - CAMERA_CENTER);
-                        self.ray_color(&mut rng, MAX_DEPTH, &ray, hittable)
+                        Self::ray_color(&mut rng, MAX_DEPTH, &ray, hittable)
                     })),
                 )
             })
@@ -113,13 +114,7 @@ impl Camera {
         )
     }
 
-    fn ray_color<R: Rng, H: Hittable>(
-        &self,
-        rng: &mut R,
-        depth: usize,
-        ray: &Ray,
-        hittable: &H,
-    ) -> Color {
+    fn ray_color<H: Hittable>(rng: &mut UsedRng, depth: usize, ray: &Ray, hittable: &H) -> Color {
         // If we have recursed too much just return black
         if depth == 0 {
             return Color::zero();
@@ -128,11 +123,16 @@ impl Camera {
         // Did we hit something?
         match hittable.hit(ray, &RangeInclusive::new(0.001, f64::INFINITY)) {
             Some(hr) => {
-                // For diffusion, send out a random reflected ray until we do not hit any surfaces
-                let direction = hr.normal + Vector::random_unit(rng);
-                self.ray_color(rng, depth - 1, &Ray::new(hr.point, direction), hittable) * 0.5
+                // Scatter based on the material
+                let scatter = hr.material.scatter(rng, ray, &hr);
+                match scatter.ray {
+                    Some(r) => Self::ray_color(rng, depth - 1, &r, hittable)
+                        .element_mul(scatter.attenuation),
+                    None => Color::zero(),
+                }
             }
             None => {
+                // Creates a sky-like color gradient
                 let unit = ray.direction.normalize();
                 Color::new(1., 1., 1.).lerp(Color::new(0.5, 0.7, 1.), 0.5 * (unit.y + 1.))
             }
