@@ -66,6 +66,7 @@ impl VectorExt for Vector {
         self.zip(other, |a, b| a * b)
     }
 
+    // This will have the same length as this vector
     fn reflect(&self, normal: Self) -> Self {
         self - 2. * self.dot(normal) * normal
     }

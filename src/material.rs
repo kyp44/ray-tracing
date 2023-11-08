@@ -6,6 +6,7 @@ use crate::{
 };
 use cgmath::InnerSpace;
 use derive_new::new;
+use num::clamp;
 
 pub struct Scatter {
     pub attenuation: Color,
@@ -38,11 +39,18 @@ impl Material for Lambertian {
 
 #[derive(new)]
 pub struct Metal {
+    /// The attenuation in the range [0, 1] for each color channel of the color that comes back from the scattered ray.
     attenuation: Color,
+    /// Radius of the random deflection sphere added to the end of the reflected ray.
+    ///
+    /// Zero is is perfect reflection with no fuzziness.
+    fuzz_factor: f64,
 }
 impl Material for Metal {
-    fn scatter(&self, _rng: &mut UsedRng, ray: &Ray, hit_record: &HitRecord) -> Scatter {
-        let reflected = ray.direction.reflect(hit_record.normal).normalize();
+    fn scatter(&self, rng: &mut UsedRng, ray: &Ray, hit_record: &HitRecord) -> Scatter {
+        let fuzz = clamp(self.fuzz_factor, 0., 1.);
+        let reflected = ray.direction.reflect(hit_record.normal).normalize()
+            + fuzz * Vector::random_within_unit_sphere(rng);
 
         Scatter {
             attenuation: self.attenuation,

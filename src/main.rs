@@ -51,12 +51,12 @@ fn main() {
         Sphere::new(
             Point::new(-1., 0., -1.),
             0.5,
-            Box::new(Metal::new(Color::new(0.8, 0.8, 0.8))),
+            Box::new(Metal::new(Color::new(0.8, 0.8, 0.8), 0.3)),
         ),
         Sphere::new(
             Point::new(1., 0., -1.),
             0.5,
-            Box::new(Metal::new(Color::new(0.8, 0.6, 0.2))),
+            Box::new(Metal::new(Color::new(0.8, 0.6, 0.2), 1.)),
         ),
     ];
 
