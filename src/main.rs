@@ -3,7 +3,7 @@
 use crate::{
     hittable::{Hittable, HittableList, Sphere},
     image::Color,
-    material::{Lambertian, Metal},
+    material::{Dielectric, Lambertian, Metal},
 };
 use camera::Camera;
 use clap::Parser;
@@ -38,21 +38,21 @@ fn main() {
 
     // World objects
     let world = [
+        // Ground
         Sphere::new(
             Point::new(0., -100.5, -1.),
             100.,
             Box::new(Lambertian::new(Color::new(0.8, 0.8, 0.))),
         ),
-        Sphere::new(
-            Point::new(0., 0., -1.),
-            0.5,
-            Box::new(Lambertian::new(Color::new(0.7, 0.3, 0.3))),
-        ),
+        // Center
+        Sphere::new(Point::new(0., 0., -1.), 0.5, Box::new(Dielectric::new(1.5))),
+        // Left
         Sphere::new(
             Point::new(-1., 0., -1.),
             0.5,
-            Box::new(Metal::new(Color::new(0.8, 0.8, 0.8), 0.3)),
+            Box::new(Dielectric::new(1.5)),
         ),
+        // Right
         Sphere::new(
             Point::new(1., 0., -1.),
             0.5,

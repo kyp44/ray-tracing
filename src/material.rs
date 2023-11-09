@@ -58,3 +58,27 @@ impl Material for Metal {
         }
     }
 }
+
+#[derive(new)]
+pub struct Dielectric {
+    index_of_refraction: f64,
+}
+impl Material for Dielectric {
+    fn scatter(&self, _rng: &mut UsedRng, ray: &Ray, hit_record: &HitRecord) -> Scatter {
+        let eta_ratio = if hit_record.front_face {
+            1. / self.index_of_refraction
+        } else {
+            self.index_of_refraction
+        };
+
+        let refracted = ray
+            .direction
+            .normalize()
+            .refract(hit_record.normal, eta_ratio);
+
+        Scatter {
+            attenuation: Color::new(1., 1., 1.),
+            ray: Some(Ray::new(hit_record.point, refracted)),
+        }
+    }
+}

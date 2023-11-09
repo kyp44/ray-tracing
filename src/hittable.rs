@@ -75,20 +75,21 @@ impl Hittable for Sphere {
         .roots()
         {
             ParabolaRoots::None => None,
-            ParabolaRoots::One(r) => Some(r),
-            ParabolaRoots::Two(r, _) => Some(r),
+            ParabolaRoots::One(r) => Some(vec![r]),
+            ParabolaRoots::Two(r1, r2) => Some(vec![r1, r2]),
         }
-        .and_then(|t| {
-            if t_range.contains(&t) {
-                Some(HitRecord::new(
-                    self.material.as_ref(),
-                    ray,
-                    t,
-                    (ray.at(t) - self.center) / self.radius,
-                ))
-            } else {
-                None
+        .and_then(|rs| {
+            for t in rs {
+                if t_range.contains(&t) {
+                    return Some(HitRecord::new(
+                        self.material.as_ref(),
+                        ray,
+                        t,
+                        (ray.at(t) - self.center) / self.radius,
+                    ));
+                }
             }
+            None
         })
     }
 }

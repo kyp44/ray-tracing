@@ -18,11 +18,11 @@ pub trait VectorExt:
         Self::random(rng, 0.0..1.)
     }
 
-    // This is necessary so that the unit sphere has a uniform distribution
+    // Nonzero vector
     fn random_within_unit_sphere<R: Rng>(rng: &mut R) -> Self {
         loop {
             let v = Self::random(rng, -1.0..1.);
-            if v.magnitude2() < 1. {
+            if !v.near_zero() && v.magnitude2() < 1. {
                 break v;
             }
         }
@@ -44,7 +44,11 @@ pub trait VectorExt:
 
     fn element_mul(&self, other: Self) -> Self;
 
+    // This will have the same length as this vector
     fn reflect(&self, normal: Self) -> Self;
+    // `eta_ratio` is the incident eta over the transmission eta.
+    // Both this and the normal vector should be unit length.
+    fn refract(&self, normal: Self, eta_ratio: f64) -> Self;
     fn average(vectors: impl Iterator<Item = Self>) -> Self;
 
     fn map<T>(&self, f: impl Fn(f64) -> T) -> Vector3<T>;
@@ -66,9 +70,16 @@ impl VectorExt for Vector {
         self.zip(other, |a, b| a * b)
     }
 
-    // This will have the same length as this vector
     fn reflect(&self, normal: Self) -> Self {
         self - 2. * self.dot(normal) * normal
+    }
+
+    fn refract(&self, normal: Self, eta_ratio: f64) -> Self {
+        let cos_theta = self.dot(-normal).min(1.);
+        let r_perp = eta_ratio * (self + cos_theta * normal);
+        let r_par = -(1. - r_perp.magnitude2()).abs().sqrt() * normal;
+
+        r_perp + r_par
     }
 
     fn average(vectors: impl Iterator<Item = Self>) -> Self {
@@ -102,7 +113,7 @@ pub struct DirectionVectors {
     pub v: Vector,
 }
 
-#[derive(new)]
+#[derive(new, Debug)]
 pub struct Ray {
     pub origin: Point,
     pub direction: Vector,
@@ -113,6 +124,7 @@ impl Ray {
     }
 }
 
+#[derive(Debug)]
 pub enum ParabolaRoots {
     None,
     One(f64),
