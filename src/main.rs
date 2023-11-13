@@ -45,7 +45,11 @@ fn main() {
             Box::new(Lambertian::new(Color::new(0.8, 0.8, 0.))),
         ),
         // Center
-        Sphere::new(Point::new(0., 0., -1.), 0.5, Box::new(Dielectric::new(1.5))),
+        Sphere::new(
+            Point::new(0., 0., -1.),
+            0.5,
+            Box::new(Lambertian::new(Color::new(0.1, 0.2, 0.5))),
+        ),
         // Left
         Sphere::new(
             Point::new(-1., 0., -1.),
@@ -56,7 +60,7 @@ fn main() {
         Sphere::new(
             Point::new(1., 0., -1.),
             0.5,
-            Box::new(Metal::new(Color::new(0.8, 0.6, 0.2), 1.)),
+            Box::new(Metal::new(Color::new(0.8, 0.6, 0.2), 0.)),
         ),
     ];
 

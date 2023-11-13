@@ -71,14 +71,21 @@ impl Material for Dielectric {
             self.index_of_refraction
         };
 
-        let refracted = ray
-            .direction
-            .normalize()
-            .refract(hit_record.normal, eta_ratio);
+        let unit_direction = ray.direction.normalize();
+        let cos_theta = unit_direction.dot(-hit_record.normal).min(1.);
+        let sin_theta = (1. - cos_theta * cos_theta).sqrt();
+
+        let scatter_direction = if eta_ratio * sin_theta > 1. {
+            // Cannot refract so must completely reflect
+            unit_direction.reflect(hit_record.normal)
+        } else {
+            // Refract
+            unit_direction.refract(hit_record.normal, eta_ratio)
+        };
 
         Scatter {
             attenuation: Color::new(1., 1., 1.),
-            ray: Some(Ray::new(hit_record.point, refracted)),
+            ray: Some(Ray::new(hit_record.point, scatter_direction)),
         }
     }
 }
