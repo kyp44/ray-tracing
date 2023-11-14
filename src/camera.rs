@@ -13,9 +13,13 @@ use rand::{thread_rng, Rng};
 use rayon::prelude::{ParallelBridge, ParallelIterator};
 use std::ops::RangeInclusive;
 
-const VIEWPORT_HEIGHT: f64 = 2.0;
-const FOCAL_LENGTH: f64 = 1.0;
+/// The focal length of the camera in world units.
+const CAMERA_FOCAL_LENGTH: f64 = 1.0;
+/// The location of the focal point of the camera.
 const CAMERA_CENTER: Point = Point::new(0., 0., 0.);
+/// Vertical camera field of view in degrees.
+const CAMERA_VERTICAL_FOV: f64 = 90.;
+/// Number of random samples averaged to render a single pixel.
 const SAMPLES_PER_PIXEL: usize = 100;
 /// The maximum number of ray bounces before just being black.
 const MAX_DEPTH: usize = 30;
@@ -33,8 +37,10 @@ impl Camera {
             (Ratio::from(image_width) / aspect_ratio).to_integer(),
         );
 
-        // Calculate the viewport size based on the image size
-        let viewport_size = Size::new(image_size.aspect_ratio() * VIEWPORT_HEIGHT, VIEWPORT_HEIGHT);
+        // Determine viewport height and size.
+        let viewport_height =
+            2. * CAMERA_FOCAL_LENGTH * (CAMERA_VERTICAL_FOV.to_radians() / 2.).tan();
+        let viewport_size = Size::new(image_size.aspect_ratio() * viewport_height, viewport_height);
 
         // Set the viewport edge vectors
         let viewport_edge_vectors = DirectionVectors::new(
@@ -50,7 +56,7 @@ impl Camera {
 
         // Calculate the location of the upper left of the viewport
         let viewport_upper_left = CAMERA_CENTER
-            - Vector::new(0., 0., FOCAL_LENGTH)
+            - Vector::new(0., 0., CAMERA_FOCAL_LENGTH)
             - viewport_edge_vectors.u / 2.
             - viewport_edge_vectors.v / 2.;
 
