@@ -7,17 +7,18 @@ use crate::{
 use cgmath::InnerSpace;
 use derive_new::new;
 use num::clamp;
+use rand::Rng;
 
 pub struct Scatter {
     pub attenuation: Color,
     pub ray: Option<Ray>,
 }
 
-pub trait Material {
+pub trait Material: std::fmt::Debug {
     fn scatter(&self, rng: &mut UsedRng, ray: &Ray, hit_record: &HitRecord) -> Scatter;
 }
 
-#[derive(new)]
+#[derive(new, Debug)]
 pub struct Lambertian {
     attenuation: Color,
 }
@@ -37,7 +38,7 @@ impl Material for Lambertian {
     }
 }
 
-#[derive(new)]
+#[derive(new, Debug)]
 pub struct Metal {
     /// The attenuation in the range [0, 1] for each color channel of the color that comes back from the scattered ray.
     attenuation: Color,
@@ -59,12 +60,20 @@ impl Material for Metal {
     }
 }
 
-#[derive(new)]
+#[derive(new, Debug)]
 pub struct Dielectric {
     index_of_refraction: f64,
 }
+impl Dielectric {
+    /// The Schlick polynomial approximation for reflectance.
+    fn reflectance(cosine: f64, ref_idx: f64) -> f64 {
+        let r0 = (1. - ref_idx) / (1. + ref_idx);
+        let r0 = r0 * r0;
+        r0 + (1. - r0) * ((1. - cosine).powi(5))
+    }
+}
 impl Material for Dielectric {
-    fn scatter(&self, _rng: &mut UsedRng, ray: &Ray, hit_record: &HitRecord) -> Scatter {
+    fn scatter(&self, rng: &mut UsedRng, ray: &Ray, hit_record: &HitRecord) -> Scatter {
         let eta_ratio = if hit_record.front_face {
             1. / self.index_of_refraction
         } else {
@@ -74,14 +83,16 @@ impl Material for Dielectric {
         let unit_direction = ray.direction.normalize();
         let cos_theta = unit_direction.dot(-hit_record.normal).min(1.);
         let sin_theta = (1. - cos_theta * cos_theta).sqrt();
+        let cannot_refract = eta_ratio * sin_theta > 1.0;
 
-        let scatter_direction = if eta_ratio * sin_theta > 1. {
-            // Cannot refract so must completely reflect
-            unit_direction.reflect(hit_record.normal)
-        } else {
-            // Refract
-            unit_direction.refract(hit_record.normal, eta_ratio)
-        };
+        let scatter_direction =
+            if cannot_refract || Self::reflectance(cos_theta, eta_ratio) > rng.gen() {
+                // Do not refract and completely reflect instead
+                unit_direction.reflect(hit_record.normal)
+            } else {
+                // Refract
+                unit_direction.refract(hit_record.normal, eta_ratio)
+            };
 
         Scatter {
             attenuation: Color::new(1., 1., 1.),

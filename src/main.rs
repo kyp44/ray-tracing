@@ -56,6 +56,12 @@ fn main() {
             0.5,
             Box::new(Dielectric::new(1.5)),
         ),
+        // Left
+        Sphere::new(
+            Point::new(-1., 0., -1.),
+            -0.4,
+            Box::new(Dielectric::new(1.5)),
+        ),
         // Right
         Sphere::new(
             Point::new(1., 0., -1.),

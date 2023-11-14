@@ -6,6 +6,7 @@ use cgmath::InnerSpace;
 use derive_new::new;
 use std::ops::RangeInclusive;
 
+#[derive(Debug)]
 pub struct HitRecord<'a> {
     pub point: Point,
     // This normal always faces against the ray.
