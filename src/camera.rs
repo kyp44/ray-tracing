@@ -1,7 +1,7 @@
 use crate::{
     hittable::Hittable,
     image::{Color, Image, Size},
-    math::{DirectionVectors, Point, Ray, Vector, VectorExt},
+    math::{BasisVectors, DirectionVectors, Point, Ray, Vector, VectorExt},
     UsedRng,
 };
 use cgmath::{InnerSpace, VectorSpace, Zero};
@@ -13,12 +13,14 @@ use rand::{thread_rng, Rng};
 use rayon::prelude::{ParallelBridge, ParallelIterator};
 use std::ops::RangeInclusive;
 
-/// The focal length of the camera in world units.
-const CAMERA_FOCAL_LENGTH: f64 = 1.0;
 /// The location of the focal point of the camera.
-const CAMERA_CENTER: Point = Point::new(0., 0., 0.);
+const CAMERA_LOOK_FROM: Point = Point::new(-2., 2., 1.);
+/// Point the center of the camera is aimed towards.
+const CAMERA_LOOK_AT: Point = Point::new(0., 0., -1.);
+/// Camera-relative up direction
+const CAMERA_UP_DIRECTION: Vector = Vector::new(0., 1., 0.);
 /// Vertical camera field of view in degrees.
-const CAMERA_VERTICAL_FOV: f64 = 90.;
+const CAMERA_VERTICAL_FOV: f64 = 20.;
 /// Number of random samples averaged to render a single pixel.
 const SAMPLES_PER_PIXEL: usize = 100;
 /// The maximum number of ray bounces before just being black.
@@ -38,14 +40,19 @@ impl Camera {
         );
 
         // Determine viewport height and size.
-        let viewport_height =
-            2. * CAMERA_FOCAL_LENGTH * (CAMERA_VERTICAL_FOV.to_radians() / 2.).tan();
+        let focal_length = (CAMERA_LOOK_AT - CAMERA_LOOK_FROM).magnitude();
+        let viewport_height = 2. * focal_length * (CAMERA_VERTICAL_FOV.to_radians() / 2.).tan();
         let viewport_size = Size::new(image_size.aspect_ratio() * viewport_height, viewport_height);
+
+        // Determine the camera basis vectors
+        let w = (CAMERA_LOOK_FROM - CAMERA_LOOK_AT).normalize();
+        let u = CAMERA_UP_DIRECTION.cross(w).normalize();
+        let camera_frame_basis = BasisVectors::new(u, w.cross(u), w);
 
         // Set the viewport edge vectors
         let viewport_edge_vectors = DirectionVectors::new(
-            Vector::new(viewport_size.width, 0., 0.),
-            Vector::new(0., -viewport_size.height, 0.),
+            viewport_size.width * camera_frame_basis.u,
+            -viewport_size.height * camera_frame_basis.v,
         );
 
         // Set the pixel-to-pixel vectors
@@ -55,8 +62,8 @@ impl Camera {
         );
 
         // Calculate the location of the upper left of the viewport
-        let viewport_upper_left = CAMERA_CENTER
-            - Vector::new(0., 0., CAMERA_FOCAL_LENGTH)
+        let viewport_upper_left = CAMERA_LOOK_FROM
+            - focal_length * camera_frame_basis.w
             - viewport_edge_vectors.u / 2.
             - viewport_edge_vectors.v / 2.;
 
@@ -103,7 +110,7 @@ impl Camera {
                             + (rng.gen::<f64>() - 0.5) * self.pixel_delta_vectors.u
                             + (rng.gen::<f64>() - 0.5) * self.pixel_delta_vectors.v;
 
-                        let ray = Ray::new(CAMERA_CENTER, pixel_sample - CAMERA_CENTER);
+                        let ray = Ray::new(CAMERA_LOOK_FROM, pixel_sample - CAMERA_LOOK_FROM);
                         Self::ray_color(&mut rng, MAX_DEPTH, &ray, hittable)
                     })),
                 )

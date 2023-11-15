@@ -37,9 +37,8 @@ fn main() {
     let camera = Camera::new(args.image_width, Ratio::new(16, 9));
 
     // World objects
-    let r: f64 = 45f64.to_radians().cos();
     let world = [
-        /* // Ground
+        // Ground
         Sphere::new(
             Point::new(0., -100.5, -1.),
             100.,
@@ -68,17 +67,6 @@ fn main() {
             Point::new(1., 0., -1.),
             0.5,
             Box::new(Metal::new(Color::new(0.8, 0.6, 0.2), 0.)),
-        ), */
-        // Test spheres for the vertical FOV test
-        Sphere::new(
-            Point::new(-r, 0., -1.),
-            r,
-            Box::new(Lambertian::new(Color::new(0., 0., 1.))),
-        ),
-        Sphere::new(
-            Point::new(r, 0., -1.),
-            r,
-            Box::new(Lambertian::new(Color::new(1., 0., 0.))),
         ),
     ];
 

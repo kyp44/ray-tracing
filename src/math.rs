@@ -113,6 +113,13 @@ pub struct DirectionVectors {
     pub v: Vector,
 }
 
+#[derive(new)]
+pub struct BasisVectors {
+    pub u: Vector,
+    pub v: Vector,
+    pub w: Vector,
+}
+
 #[derive(new, Debug)]
 pub struct Ray {
     pub origin: Point,
