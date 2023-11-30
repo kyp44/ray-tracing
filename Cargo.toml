@@ -8,10 +8,10 @@ version = "0.1.0"
 [dependencies]
 cgmath = "0.18"
 clap = {version = "4.4", features = ["derive"]}
-derive-new = "0.5"
+derive-new = "0.6"
 easy-cast = "0.5"
 indicatif = "0.17"
-itertools = "0.11"
+itertools = "0.12"
 num = "0.4"
 rand = "0.8"
 rayon = "1.8"

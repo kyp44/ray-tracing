@@ -12,13 +12,14 @@ pub type Vector = cgmath::Vector3<f64>;
 pub trait VectorExt:
     Sized + VectorSpace<Scalar = f64> + InnerSpace + std::ops::Neg<Output = Self>
 {
+    /// A random vector, with each component chosen from a uniform distribution in the `range`.
     fn random<R: Rng>(rng: &mut R, range: Range<f64>) -> Self;
 
     fn random_unit_cube<R: Rng>(rng: &mut R) -> Self {
         Self::random(rng, 0.0..1.)
     }
 
-    // Nonzero vector
+    /// Returns a nonzero vector within the unit sphere.
     fn random_within_unit_sphere<R: Rng>(rng: &mut R) -> Self {
         loop {
             let v = Self::random(rng, -1.0..1.);
@@ -28,6 +29,10 @@ pub trait VectorExt:
         }
     }
 
+    /// Returns a vector in the unit disk in the x-y plane.
+    fn random_within_unit_disk<R: Rng>(rng: &mut R) -> Self;
+
+    /// Returns a unit vector in a random direction.
     fn random_unit<R: Rng>(rng: &mut R) -> Self {
         Self::random_within_unit_sphere(rng).normalize()
     }
@@ -46,6 +51,7 @@ pub trait VectorExt:
 
     // This will have the same length as this vector
     fn reflect(&self, normal: Self) -> Self;
+
     // `eta_ratio` is the incident eta over the transmission eta.
     // Both this and the normal vector should be unit length.
     fn refract(&self, normal: Self, eta_ratio: f64) -> Self;
@@ -64,6 +70,17 @@ impl VectorExt for Vector {
             between.sample(rng),
             between.sample(rng),
         )
+    }
+
+    fn random_within_unit_disk<R: Rng>(rng: &mut R) -> Self {
+        let between = Uniform::new(-1., 1.);
+        loop {
+            let v = Self::new(between.sample(rng), between.sample(rng), 0.);
+
+            if v.magnitude2() < 1. {
+                break v;
+            }
+        }
     }
 
     fn element_mul(&self, other: Self) -> Self {
