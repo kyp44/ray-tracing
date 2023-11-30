@@ -4,11 +4,15 @@ use crate::{
     hittable::{Hittable, HittableList, Sphere},
     image::Color,
     material::{Dielectric, Lambertian, Metal},
+    math::VectorExt,
 };
 use camera::Camera;
+use cgmath::{ElementWise, InnerSpace};
 use clap::Parser;
+use itertools::iproduct;
 use math::Point;
 use num::rational::Ratio;
+use rand::{thread_rng, Rng};
 
 mod camera;
 mod hittable;
@@ -36,39 +40,63 @@ fn main() {
     // Setup camera
     let camera = Camera::new(args.image_width, Ratio::new(16, 9));
 
-    // World objects
-    let world = [
-        // Ground
+    let mut world = vec![
+        // Large ground sphere
         Sphere::new(
-            Point::new(0., -100.5, -1.),
-            100.,
-            Box::new(Lambertian::new(Color::new(0.8, 0.8, 0.))),
-        ),
-        // Center
-        Sphere::new(
-            Point::new(0., 0., -1.),
-            0.5,
-            Box::new(Lambertian::new(Color::new(0.1, 0.2, 0.5))),
-        ),
-        // Left
-        Sphere::new(
-            Point::new(-1., 0., -1.),
-            0.5,
-            Box::new(Dielectric::new(1.5)),
-        ),
-        // Left
-        Sphere::new(
-            Point::new(-1., 0., -1.),
-            -0.4,
-            Box::new(Dielectric::new(1.5)),
-        ),
-        // Right
-        Sphere::new(
-            Point::new(1., 0., -1.),
-            0.5,
-            Box::new(Metal::new(Color::new(0.8, 0.6, 0.2), 0.)),
+            Point::new(0., -1000., 0.),
+            1000.,
+            Box::new(Lambertian::new(Color::new(0.5, 0.5, 0.5))),
         ),
     ];
+
+    // Add random little spheres
+    let mut rng = thread_rng();
+    let gap_point = Point::new(4., 0.2, 0.);
+    for (a, b) in iproduct!(-11..11, -11..11) {
+        let center = Point::new(
+            f64::from(a) + 0.9 * rng.gen::<f64>(),
+            0.2,
+            f64::from(b) + 0.9 * rng.gen::<f64>(),
+        );
+
+        if (center - gap_point).magnitude() > 0.9 {
+            world.push(Sphere::new(
+                center,
+                0.2,
+                match rng.gen::<f64>() {
+                    x if x < 0.8 => {
+                        // The squaring here ensures darker colors
+                        let color = Color::random_unit_cube(&mut rng)
+                            .mul_element_wise(Color::random_unit_cube(&mut rng));
+                        Box::new(Lambertian::new(color))
+                    }
+                    x if x < 0.95 => {
+                        let color = Color::random(&mut rng, 0.5..1.);
+                        Box::new(Metal::new(color, 0.5 * rng.gen::<f64>()))
+                    }
+                    _ => Box::new(Dielectric::new(1.5)),
+                },
+            ))
+        }
+    }
+
+    // Add constant large spheres
+    world.extend([
+        // Glass
+        Sphere::new(Point::new(0., 1., 0.), 1., Box::new(Dielectric::new(1.5))),
+        // Solid
+        Sphere::new(
+            Point::new(-4., 1., 0.),
+            1.,
+            Box::new(Lambertian::new(Color::new(0.4, 0.2, 0.1))),
+        ),
+        // Metal
+        Sphere::new(
+            Point::new(4., 1., 0.),
+            1.,
+            Box::new(Metal::new(Color::new(0.7, 0.6, 0.5), 0.)),
+        ),
+    ]);
 
     // Render image
     println!(

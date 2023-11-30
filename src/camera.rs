@@ -4,7 +4,7 @@ use crate::{
     math::{BasisVectors, DirectionVectors, Point, Ray, Vector, VectorExt},
     UsedRng,
 };
-use cgmath::{InnerSpace, VectorSpace, Zero};
+use cgmath::{ElementWise, InnerSpace, VectorSpace, Zero};
 use easy_cast::Cast;
 use indicatif::{ProgressBar, ProgressStyle};
 use itertools::iproduct;
@@ -14,21 +14,21 @@ use rayon::prelude::{ParallelBridge, ParallelIterator};
 use std::ops::RangeInclusive;
 
 /// The location of the focal point of the camera.
-const CAMERA_LOOK_FROM: Point = Point::new(-2., 2., 1.);
+const CAMERA_LOOK_FROM: Point = Point::new(13., 2., 3.);
 /// Point the center of the camera is aimed towards.
-const CAMERA_LOOK_AT: Point = Point::new(0., 0., -1.);
+const CAMERA_LOOK_AT: Point = Point::new(0., 0., 0.);
 /// Camera-relative up direction
 const CAMERA_UP_DIRECTION: Vector = Vector::new(0., 1., 0.);
 /// Vertical camera field of view in degrees.
 const CAMERA_VERTICAL_FOV: f64 = 20.;
 /// Number of random samples averaged to render a single pixel.
-const SAMPLES_PER_PIXEL: usize = 100;
+const SAMPLES_PER_PIXEL: usize = 500;
 /// Variation angle of rays through each pixel in degrees.
-const DEFOCUS_ANGLE: f64 = 10.;
+const DEFOCUS_ANGLE: f64 = 0.6;
 /// Distance from the camera look from point to the plane of perfect focus
-const FOCUS_DISTANCE: f64 = 3.4;
+const FOCUS_DISTANCE: f64 = 10.;
 /// The maximum number of ray bounces before just being black.
-const MAX_DEPTH: usize = 30;
+const MAX_DEPTH: usize = 50;
 
 pub struct Camera {
     image_size: Size<usize>,
@@ -103,7 +103,7 @@ impl Camera {
                 let scatter = hr.material.scatter(rng, ray, &hr);
                 match scatter.ray {
                     Some(r) => Self::ray_color(rng, depth - 1, &r, hittable)
-                        .element_mul(scatter.attenuation),
+                        .mul_element_wise(scatter.attenuation),
                     None => Color::zero(),
                 }
             }

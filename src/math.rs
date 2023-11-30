@@ -47,8 +47,6 @@ pub trait VectorExt:
         }
     }
 
-    fn element_mul(&self, other: Self) -> Self;
-
     // This will have the same length as this vector
     fn reflect(&self, normal: Self) -> Self;
 
@@ -81,10 +79,6 @@ impl VectorExt for Vector {
                 break v;
             }
         }
-    }
-
-    fn element_mul(&self, other: Self) -> Self {
-        self.zip(other, |a, b| a * b)
     }
 
     fn reflect(&self, normal: Self) -> Self {
